@@ -6,6 +6,7 @@ import WebKit
 @MainActor
 final class QuickChatController: NSObject {
     private static let chatURL = URL(string: "https://chatgpt.com/")!
+    private static let pageZoomDefaultsKey = "quickChat.pageZoom"
     /// OpenAI's sign-in hosts (and their subdomains): where sign-in starts from a chatgpt.com page.
     private static let openAISignInHosts = ["auth.openai.com", "auth0.openai.com"]
     /// Hidden longer than this while off ChatGPT (e.g. a help page reached from a sign-in page),
@@ -171,6 +172,9 @@ final class QuickChatController: NSObject {
         panel.onCancel = { [weak self] in self?.hide(restoreFocus: true) }
         panel.onGoBack = { [weak self] in self?.webView?.goBack() }
         panel.onGoForward = { [weak self] in self?.webView?.goForward() }
+        panel.onZoomIn = { [weak self] in self?.changePageZoom(by: 0.1) }
+        panel.onZoomOut = { [weak self] in self?.changePageZoom(by: -0.1) }
+        panel.onResetZoom = { [weak self] in self?.setPageZoom(1) }
         panel.onResignKey = { [weak self] in
             self?.lostKeyAt = .now
             self?.reclaimFocusIfKept()
@@ -215,6 +219,8 @@ final class QuickChatController: NSObject {
         config.userContentController.addUserScript(WKUserScript(
             source: Self.noAutocorrectScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         let webView = WKWebView(frame: .zero, configuration: config)
+        let savedZoom = UserDefaults.standard.object(forKey: Self.pageZoomDefaultsKey) as? Double ?? 1
+        webView.pageZoom = min(3, max(0.5, savedZoom))
         webView.customUserAgent = Self.safariUserAgent
         webView.uiDelegate = self
         webView.navigationDelegate = self
@@ -240,6 +246,17 @@ final class QuickChatController: NSObject {
       apply();
     })();
     """
+
+    private func changePageZoom(by step: Double) {
+        guard let webView else { return }
+        setPageZoom(webView.pageZoom + step)
+    }
+
+    private func setPageZoom(_ zoom: Double) {
+        guard let webView else { return }
+        webView.pageZoom = min(3, max(0.5, zoom))
+        UserDefaults.standard.set(webView.pageZoom, forKey: Self.pageZoomDefaultsKey)
+    }
 
     private func focusComposer() {
         // Best effort: chatgpt.com's composer is a contenteditable #prompt-textarea.
@@ -424,6 +441,9 @@ final class QuickChatPanel: NSPanel {
     /// ⌘[ / ⌘] while the panel is key: the browsers' Back and Forward.
     var onGoBack: (() -> Void)?
     var onGoForward: (() -> Void)?
+    var onZoomIn: (() -> Void)?
+    var onZoomOut: (() -> Void)?
+    var onResetZoom: (() -> Void)?
 
     override func resignKey() {
         super.resignKey()
@@ -611,6 +631,16 @@ final class QuickChatPanel: NSPanel {
     /// Matched by character, like menu key equivalents, so they work on any keyboard layout.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if handleLocalShortcut(event) { return true }
+        // Ignore Caps Lock and the numeric-pad flag, but keep ⌥/⌃ distinct.
+        let modifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        if modifiers == .command || modifiers == [.command, .shift] {
+            switch event.charactersIgnoringModifiers {
+            case "+", "=": onZoomIn?(); return true
+            case "-": onZoomOut?(); return true
+            case "0": onResetZoom?(); return true
+            default: break
+            }
+        }
         if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command {
             switch event.charactersIgnoringModifiers {
             case "w": onCancel?(); return true

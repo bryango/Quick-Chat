@@ -81,6 +81,10 @@ final class ShortcutRecorderWindow: NSObject, NSWindowDelegate {
         ("V", cmdKey | optionKey | shiftKey, "Paste and Match Style"), ("A", cmdKey, "Select All"),
         ("Z", cmdKey, "Undo"), ("Z", cmdKey | shiftKey, "Redo"), ("W", cmdKey, "Close"), ("Q", cmdKey, "Quit"),
         ("[", cmdKey, "Back"), ("]", cmdKey, "Forward"),
+        ("=", cmdKey, "Zoom In"), ("+", cmdKey, "Zoom In"),
+        ("=", cmdKey | shiftKey, "Zoom In"), ("+", cmdKey | shiftKey, "Zoom In"),
+        ("-", cmdKey, "Zoom Out"), ("0", cmdKey, "Actual Size"),
+        ("-", cmdKey | shiftKey, "Zoom Out"), ("0", cmdKey | shiftKey, "Actual Size"),
     ]
 
     /// Why `new` can't go in `field`: it's a reserved combo, or another of the three fields already has it.
