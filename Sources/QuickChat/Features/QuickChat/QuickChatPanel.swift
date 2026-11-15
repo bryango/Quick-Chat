@@ -172,8 +172,8 @@ final class QuickChatController: NSObject {
         panel.onCancel = { [weak self] in self?.hide(restoreFocus: true) }
         panel.onGoBack = { [weak self] in self?.webView?.goBack() }
         panel.onGoForward = { [weak self] in self?.webView?.goForward() }
-        panel.onZoomIn = { [weak self] in self?.changePageZoom(by: 0.1) }
-        panel.onZoomOut = { [weak self] in self?.changePageZoom(by: -0.1) }
+        panel.onZoomIn = { [weak self] in self?.changePageZoom(by: 0.05) }
+        panel.onZoomOut = { [weak self] in self?.changePageZoom(by: -0.05) }
         panel.onResetZoom = { [weak self] in self?.setPageZoom(1) }
         panel.onResignKey = { [weak self] in
             self?.lostKeyAt = .now
@@ -431,11 +431,10 @@ extension QuickChatController: WKUIDelegate, WKNavigationDelegate, WKDownloadDel
 
 final class QuickChatPanel: NSPanel {
     static let autosaveName = "MiniChat.Panel" // pre-rename name; keeps the saved frame
-    /// Default content size (also the "reset size" target): a 3:4 portrait panel. Anything under
-    /// 640 wide gets chatgpt.com's compact (mobile) layout; 420 sits between Classic's 440-wide
-    /// companion chat and `minSize` (400), so the thread reads as a narrow column without the
-    /// squat look of the new app's 470-wide window cut down to 560 tall.
-    static let defaultSize = NSSize(width: 420, height: 560)
+    /// Default content size (also the "reset size" target): a 3:4 portrait panel,
+    /// 20% wider and taller than the original 420×560. The width stays below 640
+    /// so chatgpt.com uses its compact (mobile) layout at the default page zoom.
+    static let defaultSize = NSSize(width: 504, height: 672)
     var onCancel: (() -> Void)?
     var onResignKey: (() -> Void)?
     /// ⌘[ / ⌘] while the panel is key: the browsers' Back and Forward.
