@@ -555,6 +555,7 @@ final class QuickChatPanel: NSPanel {
         } else {
             guard let visible = (screen ?? NSScreen.main)?.visibleFrame else { return }
             restoreFrame = frame
+            level = .normal
             setFrameAutosaveName("") // keep the user's frame as the one restored on relaunch
             setOwnFrame(visible)
             updateZoomTooltip()
@@ -589,6 +590,7 @@ final class QuickChatPanel: NSPanel {
     /// Leaves the maximized state as is (frame-wise) and resumes autosaving the current frame.
     private func endMaximize() {
         restoreFrame = nil
+        level = .floating
         setFrameAutosaveName(Self.autosaveName)
         saveFrame(usingName: Self.autosaveName)
         updateZoomTooltip()
