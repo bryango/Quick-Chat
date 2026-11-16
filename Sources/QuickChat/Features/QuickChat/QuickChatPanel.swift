@@ -45,10 +45,14 @@ final class QuickChatController: NSObject {
         didSet { panel?.maximizeShortcut = maximizeShortcut }
     }
 
-    /// Hides the panel whenever it's visible on the current Space (focused or not), otherwise
-    /// shows it here. Focus goes back to the previous app only if the panel had it.
+    /// Brings an unfocused maximized panel forward; otherwise hides a visible panel
+    /// on the current Space, or shows it here. Small panels keep their toggle behavior.
     func toggle() {
         if let panel, panel.isVisible, panel.isOnActiveSpace {
+            if panel.isMaximized, !panel.isKeyWindow {
+                show()
+                return
+            }
             hide(restoreFocus: panel.isKeyWindow && NSApp.isActive)
         } else {
             show()
