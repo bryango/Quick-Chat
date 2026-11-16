@@ -226,6 +226,10 @@ final class QuickChatController: NSObject {
         config.userContentController.addUserScript(WKUserScript(
             source: Self.loadingAppearanceScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         let webView = AppearanceWebView(frame: .zero, configuration: config)
+        // underPageBackgroundColor only controls the area beneath the page, not WebKit's
+        // opaque canvas before the first document paint. Let the panel background show through.
+        // macOS WebKit exposes this switch through KVC (not a public Swift property).
+        webView.setValue(false, forKey: "drawsBackground")
         let savedZoom = UserDefaults.standard.object(forKey: Self.pageZoomDefaultsKey) as? Double ?? 1
         webView.pageZoom = min(3, max(0.5, savedZoom))
         webView.customUserAgent = Self.safariUserAgent
