@@ -222,16 +222,37 @@ final class QuickChatController: NSObject {
         config.mediaTypesRequiringUserActionForPlayback = []
         config.userContentController.addUserScript(WKUserScript(
             source: Self.noAutocorrectScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        let webView = WKWebView(frame: .zero, configuration: config)
+        config.userContentController.addUserScript(WKUserScript(
+            source: Self.loadingAppearanceScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        let webView = AppearanceWebView(frame: .zero, configuration: config)
         let savedZoom = UserDefaults.standard.object(forKey: Self.pageZoomDefaultsKey) as? Double ?? 1
         webView.pageZoom = min(3, max(0.5, savedZoom))
         webView.customUserAgent = Self.safariUserAgent
         webView.uiDelegate = self
         webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = true
-        webView.underPageBackgroundColor = .windowBackgroundColor
+        webView.updateLoadingBackground()
         return webView
     }
+
+    /// Give the document a system-aware canvas before the site's theme CSS arrives.
+    /// Low-specificity rules let the site's own theme take over once loaded.
+    private static let loadingAppearanceScript = """
+    (() => {
+      const apply = () => {
+        if (!document.documentElement) return false;
+        const style = document.createElement('style');
+        style.textContent = `:where(html) { color-scheme: light dark; background-color: #ffffff; }
+          @media (prefers-color-scheme: dark) { :where(html) { background-color: #212121; } }`;
+        document.documentElement.prepend(style);
+        return true;
+      };
+      if (!apply()) {
+        const observer = new MutationObserver(() => { if (apply()) observer.disconnect(); });
+        observer.observe(document, { childList: true });
+      }
+    })();
+    """
 
     /// Turns off macOS autocorrect / auto-capitalization (and inline predictions) in chatgpt.com's
     /// composer. Their suggestion bubble swallows keys while it's up, ⌥Space included, so the
@@ -428,6 +449,20 @@ extension QuickChatController: WKUIDelegate, WKNavigationDelegate, WKDownloadDel
         downloadDestinations.removeValue(forKey: ObjectIdentifier(download))
         log.error("Download failed: \(error.localizedDescription, privacy: .public)")
         NSSound.beep()
+    }
+}
+
+/// WebKit receives a resolved color; refresh it when the system appearance changes.
+private final class AppearanceWebView: WKWebView {
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateLoadingBackground()
+    }
+
+    func updateLoadingBackground() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            underPageBackgroundColor = NSColor.windowBackgroundColor.usingColorSpace(.deviceRGB)!
+        }
     }
 }
 
