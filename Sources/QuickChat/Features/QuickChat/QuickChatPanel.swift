@@ -79,10 +79,11 @@ final class QuickChatController: NSObject {
             }
         }
         hiddenAt = nil
-        // Don't activate the app: activation is only a request since macOS 14, and after a
-        // Space switch macOS hands focus on to another app (Finder, the full-screen app) and the
-        // panel loses the keyboard. A non-activating panel takes key without it, like Spotlight.
+        // Small non-activating panels take key like Spotlight. A maximized panel uses
+        // normal window level, so explicitly activate and raise it above other apps' windows.
+        if panel.isMaximized { NSApp.activate() }
         panel.makeKeyAndOrderFront(nil)
+        if panel.isMaximized { panel.orderFrontRegardless() }
         panel.makeFirstResponder(webView)
         focusComposer()
         shownAt = .now
